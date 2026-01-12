@@ -1,11 +1,12 @@
 <?php
 
-use App\Http\Controllers\ProfileController; // <--- PENTING: Tambahkan ini
 use Illuminate\Support\Facades\Route;
-use App\Http\Middleware\RoleCheck;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\ReportController;
+use App\Http\Middleware\RoleCheck;
 
 // Halaman Depan
 Route::get('/', function () {
@@ -14,33 +15,30 @@ Route::get('/', function () {
 
 // --- ROUTE KHUSUS ADMIN ---
 Route::middleware(['auth', RoleCheck::class . ':admin'])->group(function () {
-    Route::get('/admin/reports', 
-    [ReportController::class, 'index'
-    ])->name('admin.reports');
-    Route::get('/admin/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('admin.dashboard');
-
+    Route::get('/admin/dashboard', [ReportController::class, 'dashboard'])->name('admin.dashboard');
+    Route::get('/admin/reports', [ReportController::class, 'index'])->name('admin.reports');
+    
     Route::resource('/admin/products', ProductController::class);
 });
 
 // --- ROUTE KHUSUS KASIR ---
 Route::middleware(['auth', RoleCheck::class . ':kasir'])->group(function () {
-    // Halaman Transaksi Utama (Dashboard Kasir)
     Route::get('/kasir/dashboard', [TransactionController::class, 'index'])->name('kasir.dashboard');
-
-    // Route untuk proses transaksi nanti
-    Route::post('/kasir/add-to-cart/{id}', [TransactionController::class, 'addToCart'])->name('kasir.addToCart');
+    
+    // Proses Transaksi
+    Route::post('/transactions', [TransactionController::class, 'store'])->name('transactions.store');
+    Route::delete('/kasir/remove-item/{id}', [TransactionController::class, 'removeItem'])->name('kasir.remove_item'); // Typo sudah diperbaiki
+    
     Route::post('/kasir/checkout', [TransactionController::class, 'checkout'])->name('kasir.checkout');
     Route::get('/kasir/print/{transaction}', [TransactionController::class, 'print'])->name('kasir.print');
 });
 
-// --- ROUTE PROFILE (Bisa diakses Admin & Kasir) ---
-// Bagian inilah yang tadi hilang dan menyebabkan error
+// --- ROUTE PROFILE ---
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+// Load Rute Bawaan Laravel (Login, Register, Logout resmi)
 require __DIR__.'/auth.php';

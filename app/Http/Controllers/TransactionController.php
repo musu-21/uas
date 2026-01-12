@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Product; // Jangan lupa import Model Product
+use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use Illuminate\Support\Facades\Auth;
@@ -13,14 +13,10 @@ class TransactionController extends Controller
 {
     public function index()
     {
-        // 1. Ambil data produk agar kasir bisa milih
         $products = Product::all();
-
-        // 2. Ambil data keranjang dari Session (jika ada)
-        // Logika: Kalau session kosong, anggap array kosong []
         $cart = session()->get('cart', []);
 
-        // 3. Hitung Total Harga sementara
+        // Hitung Total
         $total_price = 0;
         foreach ($cart as $id => $details) {
             $total_price += $details['price'] * $details['quantity'];
@@ -29,64 +25,70 @@ class TransactionController extends Controller
         return view('kasir.dashboard', compact('products', 'cart', 'total_price'));
     }
 
-    public function addToCart(Request $request, $id)
+    // FUNGSI UTAMA TOMBOL "TAMBAH"
+    public function store(Request $request)
     {
+        // 1. Validasi
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $id = $request->product_id;
         $product = Product::findOrFail($id);
         $cart = session()->get('cart', []);
-        $quantity = $request->input('quantity', 1);
 
-        // Cek stok dulu
-        if($product->stock < $quantity) {
-             return redirect()->back()->with('error', 'Stok tidak cukup!');
+        // 2. Cek Stok (Jangan kurangi DB dulu, cek aja)
+        if($product->stock < $request->quantity) {
+             return redirect()->back()->with('error', 'Stok barang tidak cukup!');
         }
 
-        // Jika produk sudah ada di cart, tambahkan jumlahnya
+        // 3. Masukkan ke Session Cart
         if(isset($cart[$id])) {
-            $cart[$id]['quantity'] += $quantity;
+            // Jika sudah ada, tambahkan jumlahnya
+            $cart[$id]['quantity'] += $request->quantity;
         } else {
-            // Jika belum ada, masukkan baru
+            // Jika belum ada, buat baru
             $cart[$id] = [
                 "name" => $product->name,
-                "quantity" => $quantity,
+                "quantity" => $request->quantity,
                 "price" => $product->price,
-                "product_id" => $product->id // Simpan ID asli untuk nanti disimpan ke DB
+                "product_id" => $product->id
             ];
         }
 
-        // Simpan kembali ke session
         session()->put('cart', $cart);
-        
-        return redirect()->back()->with('success', 'Produk masuk keranjang!');
+
+        // 4. Balik ke Dashboard
+        return redirect()->route('kasir.dashboard')
+            ->with('success', 'Menu ' . $product->name . ' masuk keranjang!');
     }
     
     public function checkout()
     {
-        // 1. Cek apakah keranjang kosong?
         $cart = session()->get('cart');
         if(!$cart) {
             return redirect()->back()->with('error', 'Keranjang masih kosong!');
         }
 
-        // 2. Hitung Total Harga
         $total_price = 0;
         foreach ($cart as $id => $details) {
             $total_price += $details['price'] * $details['quantity'];
         }
 
-        // 3. Mulai Proses Database Transaction (Agar aman)
+        // Mulai Transaksi Database
         $transaction = DB::transaction(function () use ($cart, $total_price) {
             
-            // A. Buat Header Transaksi (Tabel transactions)
+            // A. Header Transaksi
             $transaction = Transaction::create([
-                'invoice_code' => 'TRX-' . time(), // Contoh: TRX-17654321
-                'user_id' => Auth::id(), // Siapa kasir yang login
+                'invoice_code' => 'TRX-' . time(),
+                'user_id' => Auth::id(),
                 'total_price' => $total_price,
                 'transaction_date' => now(),
             ]);
 
-            // B. Loop setiap barang di keranjang
+            // B. Detail & Kurangi Stok
             foreach ($cart as $id => $details) {
-                // Masukkan ke tabel detail (Tabel transaction_details)
                 TransactionDetail::create([
                     'transaction_id' => $transaction->id,
                     'product_id' => $details['product_id'],
@@ -94,29 +96,38 @@ class TransactionController extends Controller
                     'subtotal' => $details['price'] * $details['quantity'],
                 ]);
 
-                // C. KURANGI STOK PRODUK (PENTING!)
+                // Kurangi Stok Real di Database DISINI
                 $product = Product::find($details['product_id']);
-                // Kita kurangi stok yang ada sekarang dengan jumlah beli
                 $product->decrement('stock', $details['quantity']);
             }
 
             return $transaction;
-
         });
 
-        // 4. Hapus Keranjang dari Session (Kosongkan lagi)
-        session()->forget('cart');
+        session()->forget('cart'); // Kosongkan keranjang
 
-        return redirect()->route('kasir.dashboard')->with('success', 'Transaksi Berhasil Disimpan!')->with('last_transaction_id', $transaction->id);
+        return redirect()->route('kasir.dashboard')
+            ->with('success', 'Transaksi Berhasil!')
+            ->with('last_transaction_id', $transaction->id);
     }
 
     public function print(Transaction $transaction)
     {
-        // Load data detail transaksi & user kasir
         $transaction->load('details.product', 'user');
-        
         return view('kasir.print', compact('transaction'));
     }
 
+    // FUNGSI MENGHAPUS ITEM DARI KERANJANG
+    public function removeItem($id)
+    {
+        $cart = session()->get('cart');
 
+        if(isset($cart[$id])) {
+            unset($cart[$id]); // Hapus item dari array session
+            session()->put('cart', $cart); // Simpan kembali session yang sudah bersih
+        }
+
+        return redirect()->back()->with('success', 'Item berhasil dihapus dari keranjang!');
+    }
+    
 }
