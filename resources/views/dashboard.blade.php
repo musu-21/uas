@@ -22,7 +22,7 @@
                                 
                                 {{-- Placeholder Gambar (Otomatis generate gambar berdasarkan nama menu) --}}
                                 <div class="h-32 bg-gray-200 w-full object-cover relative">
-                                    <img src="https://placehold.co/400x300/orange/white?text={{ urlencode($product->name) }}" 
+                                    <img src="{{ asset('img/dimsum.jpeg') }}"
                                          alt="{{ $product->name }}" 
                                          class="w-full h-full object-cover">
                                     

@@ -1,47 +1,95 @@
-<x-guest-layout>
-    <!-- Session Status -->
-    <x-auth-session-status class="mb-4" :status="session('status')" />
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login - Dimsum Enak</title>
+    
+    {{-- Panggil CSS & JS (Tailwind) --}}
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body class="font-sans antialiased text-gray-900 bg-white">
 
-    <form method="POST" action="{{ route('login') }}">
-        @csrf
-
-        <!-- Email Address -->
-        <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+    <div class="flex min-h-screen">
+        
+        {{-- BAGIAN KIRI: GAMBAR (Hanya muncul di layar laptop/besar) --}}
+        <div class="hidden lg:flex lg:w-1/2 bg-orange-50 justify-center items-center relative overflow-hidden">
+            {{-- Gambar Background --}}
+            <img src="https://images.unsplash.com/photo-1496116218417-1a781b1c423c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" 
+                 alt="Dimsum Background" 
+                 class="absolute inset-0 w-full h-full object-cover opacity-90">
+            
+            <div class="relative z-10 bg-black/40 p-10 text-white text-center rounded-xl backdrop-blur-sm">
+                <h1 class="text-4xl font-bold mb-2">Dimsum Lezat</h1>
+                <p class="text-lg">Sistem Kasir & Manajemen Stok Terpadu</p>
+            </div>
         </div>
 
-        <!-- Password -->
-        <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
+        {{-- BAGIAN KANAN: FORM LOGIN --}}
+        <div class="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
+            <div class="w-full max-w-md space-y-8">
+                
+                {{-- Logo / Judul Mobile --}}
+                <div class="text-center">
+                    <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
+                        Masuk Aplikasi
+                    </h2>
+                    <p class="mt-2 text-sm text-gray-600">
+                        Silakan login untuk melanjutkan
+                    </p>
+                </div>
 
-            <x-text-input id="password" class="block mt-1 w-full"
-                            type="password"
-                            name="password"
-                            required autocomplete="current-password" />
+                {{-- Alert Error (Jika password salah) --}}
+                <x-auth-session-status class="mb-4" :status="session('status')" />
 
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+                <form method="POST" action="{{ route('login') }}" class="mt-8 space-y-6">
+                    @csrf
+
+                    {{-- Input Email --}}
+                    <div>
+                        <label for="email" class="block mb-2 text-sm font-medium text-gray-900">Email Address</label>
+                        <input type="email" name="email" id="email" required autofocus autocomplete="username"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block w-full p-2.5" 
+                            placeholder="nama@dimsum.com" value="{{ old('email') }}">
+                        <x-input-error :messages="$errors->get('email')" class="mt-2" />
+                    </div>
+
+                    {{-- Input Password --}}
+                    <div>
+                        <label for="password" class="block mb-2 text-sm font-medium text-gray-900">Password</label>
+                        <input type="password" name="password" id="password" required autocomplete="current-password"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block w-full p-2.5" 
+                            placeholder="••••••••">
+                        <x-input-error :messages="$errors->get('password')" class="mt-2" />
+                    </div>
+
+                    {{-- Remember Me & Forgot Password --}}
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-start">
+                            <div class="flex items-center h-5">
+                                <input id="remember_me" name="remember" type="checkbox" class="w-4 h-4 border border-gray-300 rounded bg-gray-50 focus:ring-3 focus:ring-orange-300 text-orange-600">
+                            </div>
+                            <label for="remember_me" class="ms-2 text-sm font-medium text-gray-900">Ingat Saya</label>
+                        </div>
+                        
+                        {{-- Opsi Lupa Password (Bisa dihapus jika tidak perlu) --}}
+                        @if (Route::has('password.request'))
+                            <a href="{{ route('password.request') }}" class="text-sm text-orange-600 hover:underline">Lupa Password?</a>
+                        @endif
+                    </div>
+
+                    {{-- Tombol Login --}}
+                    <button type="submit" class="w-full text-white bg-orange-600 hover:bg-orange-700 focus:ring-4 focus:outline-none focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-colors duration-200">
+                        Masuk Sekarang
+                    </button>
+
+                </form>
+
+                <p class="mt-4 text-center text-sm text-gray-500">
+                    &copy; {{ date('Y') }} Project UAS Dimsum.
+                </p>
+            </div>
         </div>
-
-        <!-- Remember Me -->
-        <div class="block mt-4">
-            <label for="remember_me" class="inline-flex items-center">
-                <input id="remember_me" type="checkbox" class="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:focus:ring-offset-gray-800" name="remember">
-                <span class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Remember me') }}</span>
-            </label>
-        </div>
-
-        <div class="flex items-center justify-end mt-4">
-            @if (Route::has('password.request'))
-                <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('password.request') }}">
-                    {{ __('Forgot your password?') }}
-                </a>
-            @endif
-
-            <x-primary-button class="ms-3">
-                {{ __('Log in') }}
-            </x-primary-button>
-        </div>
-    </form>
-</x-guest-layout>
+    </div>
+</body>
+</html>
